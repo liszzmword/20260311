@@ -1,0 +1,765 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>로또 번호 추천</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --toss-blue: #3182f6;
+      --toss-blue-light: #e8f3ff;
+      --toss-bg: linear-gradient(180deg, #e8f4ff 0%, #f2f7fc 50%, #ffffff 100%);
+      --toss-black: #191f28;
+      --toss-gray: #6b7684;
+      --toss-gray-light: #b0b8c1;
+      --toss-white: #ffffff;
+      --toss-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
+      --toss-shadow-lg: 0 4px 20px rgba(0, 0, 0, 0.08);
+      --ball-1: #3182f6;
+      --ball-2: #4a9ff5;
+      --ball-3: #63b5f4;
+      --ball-4: #7ccaf3;
+      --ball-5: #95dff2;
+      --ball-6: #aee9f1;
+      --ball-bonus: #3182f6;
+    }
+
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: 'Noto Sans KR', -apple-system, BlinkMacSystemFont, sans-serif;
+      background: var(--toss-bg);
+      min-height: 100vh;
+      color: var(--toss-black);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: 0;
+    }
+
+    .header {
+      width: 100%;
+      max-width: 1200px;
+      padding: 1.25rem 1.5rem;
+      background: var(--toss-white);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      box-shadow: var(--toss-shadow);
+    }
+
+    .header-logo {
+      font-size: 1.5rem;
+      font-weight: 700;
+      color: var(--toss-blue);
+      letter-spacing: -0.02em;
+    }
+
+    .header-nav {
+      display: flex;
+      align-items: center;
+      gap: 1.75rem;
+      font-size: 0.9rem;
+      color: var(--toss-gray);
+      font-weight: 500;
+    }
+
+    .header-nav a {
+      color: inherit;
+      text-decoration: none;
+    }
+
+    .header-nav a:hover {
+      color: var(--toss-black);
+    }
+
+    .hero {
+      width: 100%;
+      max-width: 520px;
+      padding: 3rem 1.5rem 2.5rem;
+      text-align: center;
+    }
+
+    .hero-title {
+      font-size: clamp(2rem, 5vw, 2.75rem);
+      font-weight: 700;
+      color: var(--toss-black);
+      letter-spacing: -0.03em;
+      line-height: 1.3;
+      margin-bottom: 0.75rem;
+    }
+
+    .hero-subtitle {
+      font-size: 1.1rem;
+      color: var(--toss-gray);
+      font-weight: 500;
+      margin-bottom: 2.5rem;
+    }
+
+    .result-card {
+      background: var(--toss-white);
+      border-radius: 16px;
+      padding: 2rem 1.5rem;
+      margin-bottom: 1.5rem;
+      box-shadow: var(--toss-shadow-lg);
+      transition: box-shadow 0.2s ease;
+    }
+
+    .result-card:hover {
+      box-shadow: 0 8px 28px rgba(0, 0, 0, 0.1);
+    }
+
+    .result-card {
+      background: var(--toss-white);
+      border-radius: 16px;
+      padding: 2rem 1.5rem;
+      margin-bottom: 1.5rem;
+      box-shadow: var(--toss-shadow-lg);
+      transition: box-shadow 0.2s ease;
+    }
+
+    .result-card.drawing {
+      pointer-events: none;
+    }
+
+    .result-card:hover {
+      box-shadow: 0 8px 28px rgba(0, 0, 0, 0.1);
+    }
+
+    .draw-stage {
+      display: none;
+      flex-direction: column;
+      align-items: center;
+      gap: 1rem;
+      padding: 1.5rem 0;
+      min-height: 140px;
+    }
+
+    .draw-stage.active {
+      display: flex;
+    }
+
+    .draw-status {
+      font-size: 0.9rem;
+      font-weight: 600;
+      color: var(--toss-gray);
+      letter-spacing: -0.02em;
+    }
+
+    .draw-status.highlight {
+      color: var(--toss-blue);
+      font-size: 1rem;
+    }
+
+    .drum-wrap {
+      position: relative;
+      width: 80px;
+      height: 80px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .drum {
+      width: 72px;
+      height: 72px;
+      border-radius: 50%;
+      background: linear-gradient(145deg, #e8f3ff 0%, #c5d9f8 100%);
+      border: 4px solid var(--toss-blue);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      animation: drumSpin 0.4s linear infinite;
+      box-shadow: inset 0 2px 12px rgba(0,0,0,0.08), 0 4px 16px rgba(49, 130, 246, 0.25);
+    }
+
+    .draw-stage.reveal .drum {
+      animation: drumStop 0.4s ease-out forwards;
+    }
+
+    .rolling-number {
+      font-size: 1.75rem;
+      font-weight: 800;
+      color: var(--toss-black);
+      text-shadow: 0 0 0 transparent;
+      z-index: 1;
+    }
+
+    .draw-queue {
+      display: flex;
+      gap: 0.35rem;
+      margin-top: 0.25rem;
+    }
+
+    .draw-queue span {
+      width: 10px;
+      height: 10px;
+      border-radius: 50%;
+      background: var(--toss-gray-light);
+      transition: background 0.3s, transform 0.3s;
+    }
+
+    .draw-queue span.done {
+      background: var(--toss-blue);
+      transform: scale(1.2);
+    }
+
+    .draw-queue span.current {
+      background: var(--toss-blue);
+      transform: scale(1.3);
+      animation: pulse 0.6s ease-in-out infinite;
+    }
+
+    @keyframes drumSpin {
+      from { transform: rotate(0deg); }
+      to { transform: rotate(360deg); }
+    }
+
+    @keyframes drumStop {
+      0% { transform: rotate(0deg); }
+      30% { transform: rotate(15deg); }
+      100% { transform: rotate(0deg); }
+    }
+
+    @keyframes pulse {
+      0%, 100% { opacity: 1; transform: scale(1.3); }
+      50% { opacity: 0.7; transform: scale(1.4); }
+    }
+
+    .ball-slot {
+      width: 52px;
+      height: 52px;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-weight: 700;
+      font-size: 1.15rem;
+      color: #fff;
+      box-shadow: 0 2px 8px rgba(49, 130, 246, 0.35);
+      opacity: 0;
+      transform: scale(0.3);
+    }
+
+    .ball-slot.revealed {
+      animation: ballReveal 0.5s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
+    }
+
+    @keyframes ballReveal {
+      from {
+        opacity: 0;
+        transform: scale(0.3);
+      }
+      to {
+        opacity: 1;
+        transform: scale(1);
+      }
+    }
+
+    .result-label {
+      font-size: 0.8rem;
+      color: var(--toss-gray);
+      font-weight: 600;
+      letter-spacing: -0.01em;
+      margin-bottom: 1.25rem;
+    }
+
+    .balls {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.6rem;
+      justify-content: center;
+      min-height: 4rem;
+      align-items: center;
+    }
+
+    .ball {
+      width: 52px;
+      height: 52px;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-weight: 700;
+      font-size: 1.15rem;
+      color: #fff;
+      box-shadow: 0 2px 8px rgba(49, 130, 246, 0.35);
+      animation: popIn 0.4s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
+    }
+
+    .ball.reveal-one {
+      animation: ballReveal 0.5s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
+    }
+
+    .ball:nth-child(1) { animation-delay: 0.05s; background: #3182f6; }
+    .ball:nth-child(2) { animation-delay: 0.08s; background: #4a9ff5; }
+    .ball:nth-child(3) { animation-delay: 0.11s; background: #63b5f4; }
+    .ball:nth-child(4) { animation-delay: 0.14s; background: #7ccaf3; }
+    .ball:nth-child(5) { animation-delay: 0.17s; background: #95dff2; }
+    .ball:nth-child(6) { animation-delay: 0.2s; background: #5b9cf6; }
+
+    .bonus-wrap {
+      margin-top: 1.5rem;
+      padding-top: 1.5rem;
+      border-top: 1px solid #f2f4f6;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 0.6rem;
+      flex-wrap: wrap;
+    }
+
+    .bonus-label {
+      font-size: 0.85rem;
+      color: var(--toss-gray);
+      font-weight: 600;
+    }
+
+    .ball-bonus {
+      width: 52px;
+      height: 52px;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-weight: 700;
+      font-size: 1.15rem;
+      color: #fff;
+      background: var(--toss-blue);
+      box-shadow: 0 2px 8px rgba(49, 130, 246, 0.35);
+      animation: popIn 0.4s cubic-bezier(0.34, 1.56, 0.64, 1) 0.25s forwards;
+      opacity: 0;
+    }
+
+    .mini-ball-bonus {
+      width: 30px;
+      height: 30px;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 0.8rem;
+      font-weight: 700;
+      color: #fff;
+      background: var(--toss-blue);
+    }
+
+    @keyframes popIn {
+      from {
+        opacity: 0;
+        transform: scale(0.85);
+      }
+      to {
+        opacity: 1;
+        transform: scale(1);
+      }
+    }
+
+    .btn-generate {
+      width: 100%;
+      padding: 1rem 1.5rem;
+      font-family: inherit;
+      font-size: 1rem;
+      font-weight: 600;
+      color: var(--toss-white);
+      background: var(--toss-black);
+      border: none;
+      border-radius: 12px;
+      cursor: pointer;
+      transition: background 0.2s ease, transform 0.15s ease;
+      margin-bottom: 2rem;
+    }
+
+    .btn-generate:hover {
+      background: #333d4b;
+      transform: translateY(-1px);
+    }
+
+    .btn-generate:hover:disabled {
+      transform: none;
+    }
+
+    .btn-generate:disabled {
+      cursor: not-allowed;
+      opacity: 0.85;
+    }
+
+    .btn-generate:active {
+      transform: translateY(0);
+    }
+
+    .history {
+      width: 100%;
+      max-width: 520px;
+      padding: 0 1.5rem 2rem;
+    }
+
+    .history h2 {
+      font-size: 1rem;
+      font-weight: 700;
+      color: var(--toss-black);
+      margin-bottom: 1rem;
+      letter-spacing: -0.02em;
+    }
+
+    .history-list {
+      display: flex;
+      flex-direction: column;
+      gap: 0.6rem;
+    }
+
+    .history-item {
+      background: var(--toss-white);
+      border-radius: 12px;
+      padding: 1rem 1.25rem;
+      display: flex;
+      align-items: center;
+      gap: 0.4rem;
+      flex-wrap: wrap;
+      box-shadow: var(--toss-shadow);
+      transition: box-shadow 0.2s ease;
+    }
+
+    .history-item:hover {
+      box-shadow: var(--toss-shadow-lg);
+    }
+
+    .history-item .mini-ball {
+      width: 30px;
+      height: 30px;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 0.8rem;
+      font-weight: 700;
+      color: #fff;
+      box-shadow: 0 1px 4px rgba(49, 130, 246, 0.25);
+    }
+
+    .empty-state {
+      color: var(--toss-gray-light);
+      font-size: 0.9rem;
+      text-align: center;
+      padding: 2rem;
+    }
+
+    footer {
+      margin-top: auto;
+      padding: 2rem 1.5rem;
+      font-size: 0.75rem;
+      color: var(--toss-gray-light);
+      text-align: center;
+      max-width: 520px;
+    }
+
+    .real-result {
+      width: 100%;
+      max-width: 520px;
+      padding: 0 1.5rem 2rem;
+    }
+
+    .real-result h2 {
+      font-size: 1rem;
+      font-weight: 700;
+      color: var(--toss-black);
+      margin-bottom: 0.5rem;
+      letter-spacing: -0.02em;
+    }
+
+    .real-result .round-info {
+      font-size: 0.8rem;
+      color: var(--toss-gray);
+      margin-bottom: 1rem;
+    }
+
+    .real-result .real-balls {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: 0.5rem;
+      justify-content: center;
+    }
+
+    .real-result .real-ball {
+      width: 40px;
+      height: 40px;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 0.95rem;
+      font-weight: 700;
+      color: #fff;
+      box-shadow: 0 2px 6px rgba(49, 130, 246, 0.3);
+    }
+
+    .real-result .real-ball.bonus {
+      background: var(--toss-blue);
+    }
+
+    .real-result .real-ball + .plus {
+      color: var(--toss-gray);
+      font-size: 0.9rem;
+      margin: 0 2px;
+    }
+  </style>
+</head>
+<body>
+  <header class="header">
+    <span class="header-logo">로또 번호 추천</span>
+    <nav class="header-nav">
+      <a href="#">이용 안내</a>
+      <a href="#">자주 묻는 질문</a>
+    </nav>
+  </header>
+
+  <main>
+    <section class="hero">
+      <h1 class="hero-title">로또 번호,<br>쉽고 간편하게</h1>
+      <p class="hero-subtitle">1–45 중 무작위 6개 번호 + 보너스 번호를 추천해 드립니다</p>
+
+      <section class="result-card" id="resultCard">
+      <div class="draw-stage" id="drawStage">
+        <span class="draw-status" id="drawStatus">1번째 당첨번호</span>
+        <div class="drum-wrap">
+          <div class="drum" id="drum">
+            <span class="rolling-number" id="rollingNumber">?</span>
+          </div>
+        </div>
+        <div class="draw-queue" id="drawQueue">
+          <span data-n="0"></span><span data-n="1"></span><span data-n="2"></span>
+          <span data-n="3"></span><span data-n="4"></span><span data-n="5"></span>
+          <span data-n="bonus" style="margin-left:6px"></span>
+        </div>
+      </div>
+      <div class="result-label" id="resultLabel">이번 추천 번호</div>
+      <div class="balls" id="balls">
+        <span class="empty-state" id="emptyState">아래 버튼을 눌러 추첨을 시작하세요</span>
+      </div>
+      <div class="bonus-wrap" id="bonusWrap" style="display: none;">
+        <span class="bonus-label">보너스</span>
+        <span class="ball-bonus" id="bonusBall"></span>
+      </div>
+    </section>
+
+    <button type="button" class="btn-generate" id="btnGenerate">추첨 시작하기</button>
+    </section>
+
+    <section class="history">
+      <h2>이전 추천</h2>
+      <div class="history-list" id="historyList">
+        <p class="empty-state">아직 기록이 없습니다</p>
+      </div>
+    </section>
+
+    <section class="real-result">
+      <h2>2026년 로또 1등 당첨번호</h2>
+      <p class="round-info">제1214회 (2026년 3월 7일 추첨)</p>
+      <div class="real-balls">
+        <span class="real-ball" style="background:#3182f6">10</span>
+        <span class="real-ball" style="background:#4a9ff5">15</span>
+        <span class="real-ball" style="background:#63b5f4">19</span>
+        <span class="real-ball" style="background:#7ccaf3">27</span>
+        <span class="real-ball" style="background:#95dff2">30</span>
+        <span class="real-ball" style="background:#5b9cf6">33</span>
+        <span class="plus">+</span>
+        <span class="real-ball bonus">14</span>
+      </div>
+    </section>
+  </main>
+
+  <footer>
+    참고용이며, 당첨을 보장하지 않습니다. 건전한 재미로만 이용해 주세요.
+  </footer>
+
+  <script>
+    const BALL_COLORS = [
+      '#3182f6', '#4a9ff5', '#63b5f4', '#7ccaf3', '#95dff2', '#5b9cf6'
+    ];
+
+    function getLottoNumbers() {
+      const pool = Array.from({ length: 45 }, (_, i) => i + 1);
+      const picked = [];
+      for (let i = 0; i < 6; i++) {
+        const idx = Math.floor(Math.random() * pool.length);
+        picked.push(pool.splice(idx, 1)[0]);
+      }
+      const numbers = picked.sort((a, b) => a - b);
+      const bonusPool = Array.from({ length: 45 }, (_, i) => i + 1).filter(n => !numbers.includes(n));
+      const bonus = bonusPool[Math.floor(Math.random() * bonusPool.length)];
+      return { numbers, bonus };
+    }
+
+    function rollNumber(el, finalNum, duration = 1200) {
+      return new Promise((resolve) => {
+        const start = Date.now();
+        const interval = 80;
+        let tick = 0;
+        function update() {
+          if (Date.now() - start >= duration) {
+            el.textContent = finalNum;
+            resolve();
+            return;
+          }
+          el.textContent = Math.floor(Math.random() * 45) + 1;
+          tick += interval;
+          setTimeout(update, interval);
+        }
+        update();
+      });
+    }
+
+    const ballsEl = document.getElementById('balls');
+    const emptyState = document.getElementById('emptyState');
+    const drawStage = document.getElementById('drawStage');
+    const drawStatus = document.getElementById('drawStatus');
+    const rollingNumber = document.getElementById('rollingNumber');
+    const drum = document.getElementById('drum');
+    const drawQueue = document.getElementById('drawQueue');
+    const bonusWrap = document.getElementById('bonusWrap');
+    const bonusBall = document.getElementById('bonusBall');
+    const btnGenerate = document.getElementById('btnGenerate');
+    const resultLabel = document.getElementById('resultLabel');
+    const resultCard = document.getElementById('resultCard');
+
+    function setQueueStep(index, state) {
+      const dots = drawQueue.querySelectorAll('span[data-n]');
+      dots.forEach((d, i) => {
+        d.classList.remove('current', 'done');
+        if (state === 'allDone') {
+          d.classList.add('done');
+          return;
+        }
+        if (i < index) d.classList.add('done');
+        else if (i === index) d.classList.add(state === 'current' ? 'current' : 'done');
+      });
+    }
+
+    function createBallSlots() {
+      ballsEl.innerHTML = '';
+      for (let i = 0; i < 6; i++) {
+        const slot = document.createElement('span');
+        slot.className = 'ball';
+        slot.style.background = BALL_COLORS[i % BALL_COLORS.length];
+        slot.textContent = '';
+        slot.style.opacity = '0';
+        slot.style.transform = 'scale(0.3)';
+        ballsEl.appendChild(slot);
+      }
+    }
+
+    function revealBall(index, number) {
+      const slot = ballsEl.children[index];
+      if (!slot) return;
+      slot.textContent = number;
+      slot.style.opacity = '1';
+      slot.classList.add('reveal-one');
+    }
+
+    async function runDraw(numbers, bonus) {
+      resultCard.classList.add('drawing');
+      btnGenerate.disabled = true;
+      btnGenerate.textContent = '추첨 중...';
+      emptyState.style.display = 'none';
+      createBallSlots();
+      bonusWrap.style.display = 'none';
+      resultLabel.style.display = 'none';
+      drawStage.classList.add('active');
+      drawStage.classList.remove('reveal');
+      drum.classList.remove('reveal');
+
+      for (let i = 0; i < 6; i++) {
+        drawStage.classList.remove('reveal');
+        setQueueStep(i, 'current');
+        drawStatus.textContent = `${i + 1}번째 당첨번호`;
+        drawStatus.classList.remove('highlight');
+        rollingNumber.textContent = '?';
+        rollingNumber.style.visibility = 'visible';
+
+        await new Promise(r => setTimeout(r, 400));
+        await rollNumber(rollingNumber, numbers[i], 1400 + Math.random() * 400);
+        drawStage.classList.add('reveal');
+        await new Promise(r => setTimeout(r, 300));
+        revealBall(i, numbers[i]);
+        setQueueStep(i + 1, 'done');
+        await new Promise(r => setTimeout(r, 600));
+      }
+
+      setQueueStep(6, 'current');
+      drawStatus.textContent = '보너스 번호!';
+      drawStatus.classList.add('highlight');
+      rollingNumber.textContent = '?';
+      drawStage.classList.add('reveal');
+      await new Promise(r => setTimeout(r, 500));
+      await rollNumber(rollingNumber, bonus, 1800);
+      await new Promise(r => setTimeout(r, 350));
+      bonusWrap.style.display = 'flex';
+      bonusBall.textContent = bonus;
+      bonusBall.style.animation = 'none';
+      bonusBall.offsetHeight;
+      bonusBall.style.animation = 'ballReveal 0.5s cubic-bezier(0.34, 1.56, 0.64, 1) forwards';
+      setQueueStep(0, 'allDone');
+
+      drawStatus.textContent = '추첨 완료!';
+      await new Promise(r => setTimeout(r, 1200));
+
+      drawStage.classList.remove('active', 'reveal');
+      resultLabel.style.display = '';
+      resultCard.classList.remove('drawing');
+      btnGenerate.disabled = false;
+      btnGenerate.textContent = '다시 추첨하기';
+    }
+
+    function updateHistory(numbers, bonus) {
+      const list = document.getElementById('historyList');
+      const empty = list.querySelector('.empty-state');
+      if (empty) empty.remove();
+
+      const item = document.createElement('div');
+      item.className = 'history-item';
+      const inner = document.createElement('div');
+      inner.style.display = 'flex';
+      inner.style.gap = '6px';
+      inner.style.flexWrap = 'wrap';
+      inner.style.alignItems = 'center';
+      numbers.forEach((num, i) => {
+        const b = document.createElement('span');
+        b.className = 'mini-ball';
+        b.textContent = num;
+        b.style.background = BALL_COLORS[i % BALL_COLORS.length];
+        inner.appendChild(b);
+      });
+      const plus = document.createElement('span');
+      plus.style.color = 'var(--toss-gray)';
+      plus.style.fontSize = '0.85rem';
+      plus.style.marginLeft = '4px';
+      plus.textContent = '+';
+      inner.appendChild(plus);
+      const bonusEl = document.createElement('span');
+      bonusEl.className = 'mini-ball-bonus';
+      bonusEl.textContent = bonus;
+      inner.appendChild(bonusEl);
+      item.appendChild(inner);
+      list.insertBefore(item, list.firstChild);
+
+      while (list.children.length > 10) {
+        list.removeChild(list.lastChild);
+      }
+    }
+
+    btnGenerate.addEventListener('click', async () => {
+      const { numbers, bonus } = getLottoNumbers();
+      await runDraw(numbers, bonus);
+      updateHistory(numbers, bonus);
+    });
+  </script>
+</body>
+</html>
