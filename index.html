@@ -580,7 +580,27 @@
     참고용이며, 당첨을 보장하지 않습니다. 건전한 재미로만 이용해 주세요.
   </footer>
 
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script>
+    // Vercel 환경 변수는 /api/config 에서 불러옵니다 (SUPABASE_URL, SUPABASE_ANON_KEY)
+    let supabaseConfig = null;
+
+    async function getSupabaseConfig() {
+      if (supabaseConfig) return supabaseConfig;
+      try {
+        const res = await fetch('/api/config');
+        if (!res.ok) return null;
+        const data = await res.json();
+        if (data.SUPABASE_URL && data.SUPABASE_ANON_KEY) {
+          supabaseConfig = { url: data.SUPABASE_URL, key: data.SUPABASE_ANON_KEY };
+          return supabaseConfig;
+        }
+      } catch (e) {
+        console.warn('Supabase 설정 로드 실패:', e);
+      }
+      return null;
+    }
+
     const BALL_COLORS = [
       '#3182f6', '#4a9ff5', '#63b5f4', '#7ccaf3', '#95dff2', '#5b9cf6'
     ];
@@ -755,10 +775,28 @@
       }
     }
 
+    async function saveToSupabase(numbers, bonus) {
+      const config = await getSupabaseConfig();
+      if (!config || !config.url || !config.key) return;
+      try {
+        const { createClient } = window.supabase || {};
+        if (!createClient) return;
+        const supabase = createClient(config.url, config.key);
+        const { error } = await supabase.from('lotto_draws').insert({
+          numbers: numbers,
+          bonus: bonus
+        });
+        if (error) console.warn('Supabase 저장 실패:', error.message);
+      } catch (e) {
+        console.warn('Supabase 저장 오류:', e);
+      }
+    }
+
     btnGenerate.addEventListener('click', async () => {
       const { numbers, bonus } = getLottoNumbers();
       await runDraw(numbers, bonus);
       updateHistory(numbers, bonus);
+      await saveToSupabase(numbers, bonus);
     });
   </script>
 </body>
